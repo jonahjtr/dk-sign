@@ -63,6 +63,28 @@ function buildLogoHeader(branding: Branding, env: EnvSource): string {
   ].join("");
 }
 
+// DK: every email to a person gets the same card: brand-color bar, white
+// panel, and a real button for a paragraph that is only one link. The color
+// comes from Settings, so the emails follow the site.
+function wrapInBrandShell(html: string, branding: Branding): string {
+  const color = /^#[0-9a-f]{6}$/i.test(branding.brandColor ?? "")
+    ? branding.brandColor
+    : "#5340d6";
+  const withButtons = html.replace(
+    /<p><a href="([^"]+)">([^<]+)<\/a><\/p>/g,
+    `<p style="margin:24px 0;"><a href="$1" style="display:inline-block;background:${color};color:#ffffff;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:8px;">$2</a></p>`,
+  );
+
+  return [
+    '<div style="background:#f4f4f5;padding:32px 16px;">',
+    '<div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e6e6e8;border-radius:12px;overflow:hidden;">',
+    `<div style="height:4px;background:${color};font-size:0;line-height:0;">&nbsp;</div>`,
+    `<div style="padding:32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0a0a0b;">`,
+    withButtons,
+    "</div></div></div>",
+  ].join("");
+}
+
 /**
  * Appends the footer every email to a person carries: the install's terms,
  * privacy and contact links, where it has them. On a neutral install the
@@ -94,7 +116,7 @@ export function withUserEmailLegalFooter(
     }
 
     const sentBy = branding.organizationName
-      ? `Sent by ${branding.organizationName} using ${SIGNUDOC_NAME}.`
+      ? `Sent by ${branding.organizationName}.`
       : `Sent using ${SIGNUDOC_NAME}.`;
 
     textLines.push("", sentBy);
@@ -103,17 +125,26 @@ export function withUserEmailLegalFooter(
 
   if (htmlLines.length === 0) {
     return logoHeader
-      ? { htmlBody: `${logoHeader}${input.htmlBody}`, textBody: input.textBody }
+      ? {
+          htmlBody: wrapInBrandShell(
+            `${logoHeader}${input.htmlBody}`,
+            branding,
+          ),
+          textBody: input.textBody,
+        }
       : input;
   }
 
   const htmlFooter = [
     '<hr style="margin:24px 0;border:none;border-top:1px solid #e2e2e2;" />',
-    `<p>${htmlLines.join("<br />")}</p>`,
+    `<p style="margin:0;font-size:12px;line-height:1.6;color:#6b6e76;">${htmlLines.join("<br />")}</p>`,
   ].join("");
 
   return {
-    htmlBody: `${logoHeader}${input.htmlBody}${htmlFooter}`,
+    htmlBody: wrapInBrandShell(
+      `${logoHeader}${input.htmlBody}${htmlFooter}`,
+      branding,
+    ),
     // Each entry starts with an empty line; one more newline puts that
     // empty line between the message and the footer.
     textBody: `${input.textBody}\n${textLines.join("\n")}`,

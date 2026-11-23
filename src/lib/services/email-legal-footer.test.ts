@@ -56,7 +56,7 @@ test("a neutral install with nothing else set links its signer privacy notice an
       "Privacy notice:",
       "https://sign.acme.com/signer-privacy",
       "",
-      "Sent by Acme Corp using SignuDoc.",
+      "Sent by Acme Corp.",
     ].join("\n"),
   );
 });
@@ -86,7 +86,7 @@ test("a neutral install links to the organization's own pages and support addres
       "",
       "Questions? Contact help@acme.com.",
       "",
-      "Sent by Acme Corp using SignuDoc.",
+      "Sent by Acme Corp.",
     ].join("\n"),
   );
   assert.match(
@@ -117,11 +117,11 @@ test("the organization's name and links are escaped in the HTML part", () => {
     env,
   );
 
-  assert.match(result.htmlBody, /Sent by Harbour &amp; &lt;Finch&gt; using/);
+  assert.match(result.htmlBody, /Sent by Harbour &amp; &lt;Finch&gt;\./);
   assert.doesNotMatch(result.htmlBody, /<Finch>/);
   assert.doesNotMatch(result.htmlBody, /b="2"/);
   // The plain-text part is not HTML and carries the name as it is.
-  assert.match(result.textBody, /Sent by Harbour & <Finch> using SignuDoc\./);
+  assert.match(result.textBody, /Sent by Harbour & <Finch>\./);
 });
 
 test("a neutral install with no links does not need to know its own URL", () => {
@@ -139,12 +139,26 @@ test("an install with a logo puts it at the top of the HTML part only", () => {
     env,
   );
 
-  assert.ok(
-    result.htmlBody.startsWith(
-      '<p style="margin:0 0 24px;"><img src="https://sign.acme.com/api/brand/logo?v=0123456789abcdef" alt="Acme &quot;Signing&quot; &amp; Co"',
-    ),
+  const logoAt = result.htmlBody.indexOf(
+    '<p style="margin:0 0 24px;"><img src="https://sign.acme.com/api/brand/logo?v=0123456789abcdef" alt="Acme &quot;Signing&quot; &amp; Co"',
   );
-  assert.ok(result.htmlBody.includes("<p>Hello</p>"));
+
+  assert.ok(logoAt > 0);
+  assert.ok(logoAt < result.htmlBody.indexOf("<p>Hello</p>"));
+  // DK: a paragraph that is only a link becomes a button in the brand color.
+  const withLink = withUserEmailLegalFooter(
+    {
+      htmlBody: '<p><a href="https://x.test/a">Open</a></p>',
+      textBody: "Open",
+    },
+    { ...neutral, brandColor: "#3067ff" },
+    env,
+  );
+
+  assert.match(
+    withLink.htmlBody,
+    /background:#3067ff;color:#ffffff[^>]*>Open<\/a>/,
+  );
   assert.doesNotMatch(result.textBody, /logo/);
 });
 
